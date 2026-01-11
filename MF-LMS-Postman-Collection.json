@@ -1,0 +1,1251 @@
+{
+  "info": {
+    "_postman_id": "mf-lms-backend-collection",
+    "name": "MF-LMS Backend API",
+    "description": "Collection complète pour tester l'API du système de gestion de microfinance",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refreshToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "customerId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "loanId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Authentication",
+      "item": [
+        {
+          "name": "Login - Admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('accessToken', response.accessToken);",
+                  "    pm.collectionVariables.set('refreshToken', response.refreshToken);",
+                  "    pm.collectionVariables.set('userId', response.user.id);",
+                  "    pm.environment.set('accessToken', response.accessToken);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@mflms.com\",\n  \"password\": \"Password123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Login - Loan Officer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('accessToken', response.accessToken);",
+                  "    pm.collectionVariables.set('refreshToken', response.refreshToken);",
+                  "    pm.environment.set('accessToken', response.accessToken);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"officer1@mflms.com\",\n  \"password\": \"Password123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Login - Branch Manager",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('accessToken', response.accessToken);",
+                  "    pm.collectionVariables.set('refreshToken', response.refreshToken);",
+                  "    pm.environment.set('accessToken', response.accessToken);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"manager1@mflms.com\",\n  \"password\": \"Password123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Register New User",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"newuser@mflms.com\",\n  \"username\": \"newuser\",\n  \"password\": \"Password123!\",\n  \"firstName\": \"New\",\n  \"lastName\": \"User\",\n  \"phone\": \"+237600000000\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Get Profile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "profile"]
+            }
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('accessToken', response.accessToken);",
+                  "    pm.environment.set('accessToken', response.accessToken);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/refresh",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "refresh"]
+            }
+          }
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"oldPassword\": \"Password123!\",\n  \"newPassword\": \"NewPassword123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/change-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "change-password"]
+            }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "logout"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Users",
+      "item": [
+        {
+          "name": "Create User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('userId', response.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"testuser@mflms.com\",\n  \"username\": \"testuser\",\n  \"password\": \"Password123!\",\n  \"firstName\": \"Test\",\n  \"lastName\": \"User\",\n  \"phone\": \"+237611111111\",\n  \"role\": \"LOAN_OFFICER\",\n  \"status\": \"ACTIVE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users",
+              "host": ["{{baseUrl}}"],
+              "path": ["users"]
+            }
+          }
+        },
+        {
+          "name": "Get All Users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["users"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "role",
+                  "value": "LOAN_OFFICER",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "ACTIVE",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get User By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{userId}}"]
+            }
+          }
+        },
+        {
+          "name": "Update User",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Updated\",\n  \"lastName\": \"Name\",\n  \"phone\": \"+237622222222\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{userId}}"]
+            }
+          }
+        },
+        {
+          "name": "Assign Branch to User",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"branchId\": \"<branch_id_here>\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}/assign-branch",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{userId}}", "assign-branch"]
+            }
+          }
+        },
+        {
+          "name": "Get User Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{userId}}", "stats"]
+            }
+          }
+        },
+        {
+          "name": "Delete User",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{userId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Customers",
+      "item": [
+        {
+          "name": "Create Customer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('customerId', response.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"INDIVIDUAL\",\n  \"firstName\": \"Jean\",\n  \"lastName\": \"Dupont\",\n  \"dateOfBirth\": \"1985-05-15\",\n  \"gender\": \"MALE\",\n  \"nationalId\": \"CM123456789\",\n  \"phone\": \"+237677777777\",\n  \"email\": \"jean.dupont@email.com\",\n  \"address\": \"123 Rue de la Paix\",\n  \"city\": \"Yaoundé\",\n  \"district\": \"Mfoundi\",\n  \"occupation\": \"Commerçant\",\n  \"monthlyIncome\": 500000,\n  \"branchId\": \"<branch_id_here>\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/customers",
+              "host": ["{{baseUrl}}"],
+              "path": ["customers"]
+            }
+          }
+        },
+        {
+          "name": "Get All Customers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/customers?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["customers"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "type",
+                  "value": "INDIVIDUAL",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "PROSPECT",
+                  "disabled": true
+                },
+                {
+                  "key": "riskLevel",
+                  "value": "MEDIUM",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Customer By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/customers/{{customerId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["customers", "{{customerId}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Customer",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+237688888888\",\n  \"email\": \"updated@email.com\",\n  \"monthlyIncome\": 600000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/customers/{{customerId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["customers", "{{customerId}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Customer KYC",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"hasNationalId\": true,\n  \"hasProofOfAddress\": true,\n  \"hasPhotoProof\": true,\n  \"hasIncomeProof\": true,\n  \"hasBusinessDocs\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/customers/{{customerId}}/kyc",
+              "host": ["{{baseUrl}}"],
+              "path": ["customers", "{{customerId}}", "kyc"]
+            }
+          }
+        },
+        {
+          "name": "Update Risk Profile",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"riskLevel\": \"LOW\",\n  \"creditScore\": 750,\n  \"delinquencyHistory\": false,\n  \"multipleBorrowing\": false,\n  \"politicalExposure\": false,\n  \"highRiskOccupation\": false,\n  \"assessmentNotes\": \"Client fiable avec bon historique\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/customers/{{customerId}}/risk-profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["customers", "{{customerId}}", "risk-profile"]
+            }
+          }
+        },
+        {
+          "name": "Convert Prospect to Customer",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"confirm\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/customers/{{customerId}}/convert-to-customer",
+              "host": ["{{baseUrl}}"],
+              "path": ["customers", "{{customerId}}", "convert-to-customer"]
+            }
+          }
+        },
+        {
+          "name": "Get Customer History",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/customers/{{customerId}}/history",
+              "host": ["{{baseUrl}}"],
+              "path": ["customers", "{{customerId}}", "history"]
+            }
+          }
+        },
+        {
+          "name": "Delete Customer",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/customers/{{customerId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["customers", "{{customerId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Loans",
+      "item": [
+        {
+          "name": "Create Loan",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('loanId', response.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{customerId}}\",\n  \"productName\": \"Prêt Commerce\",\n  \"purpose\": \"TRADE\",\n  \"requestedAmount\": 1000000,\n  \"interestRate\": 15,\n  \"interestRateType\": \"REDUCING_BALANCE\",\n  \"tenure\": 12,\n  \"repaymentFrequency\": \"MONTHLY\",\n  \"loanOfficerId\": \"<loan_officer_id>\",\n  \"branchId\": \"<branch_id>\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/loans",
+              "host": ["{{baseUrl}}"],
+              "path": ["loans"]
+            }
+          }
+        },
+        {
+          "name": "Get All Loans",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/loans?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["loans"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "DRAFT",
+                  "disabled": true
+                },
+                {
+                  "key": "purpose",
+                  "value": "TRADE",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Loan By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/loans/{{loanId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["loans", "{{loanId}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Loan",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"requestedAmount\": 1200000,\n  \"tenure\": 18\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/loans/{{loanId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["loans", "{{loanId}}"]
+            }
+          }
+        },
+        {
+          "name": "Submit Loan Application",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"confirm\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/loans/{{loanId}}/submit",
+              "host": ["{{baseUrl}}"],
+              "path": ["loans", "{{loanId}}", "submit"]
+            }
+          }
+        },
+        {
+          "name": "Create Appraisal",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"siteVisitDate\": \"2025-01-15T10:00:00Z\",\n  \"siteVisitNotes\": \"Visite réussie, commerce bien établi\",\n  \"monthlyIncome\": 800000,\n  \"monthlyExpenses\": 400000,\n  \"netCashFlow\": 400000,\n  \"debtServiceRatio\": 0.25,\n  \"creditScore\": 720,\n  \"scoringNotes\": \"Bon profil de crédit\",\n  \"recommendedAmount\": 1000000,\n  \"recommendedTenure\": 12,\n  \"appraisalNotes\": \"Client fiable, recommandé pour approbation\",\n  \"recommendation\": \"APPROVE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/loans/{{loanId}}/appraisal",
+              "host": ["{{baseUrl}}"],
+              "path": ["loans", "{{loanId}}", "appraisal"]
+            }
+          }
+        },
+        {
+          "name": "Update Appraisal",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"creditScore\": 750,\n  \"appraisalNotes\": \"Notes mises à jour après vérification supplémentaire\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/loans/{{loanId}}/appraisal",
+              "host": ["{{baseUrl}}"],
+              "path": ["loans", "{{loanId}}", "appraisal"]
+            }
+          }
+        },
+        {
+          "name": "Complete Appraisal",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/loans/{{loanId}}/appraisal/complete",
+              "host": ["{{baseUrl}}"],
+              "path": ["loans", "{{loanId}}", "appraisal", "complete"]
+            }
+          }
+        },
+        {
+          "name": "Create Approval Decision",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"level\": \"BRANCH_MANAGER\",\n  \"decision\": \"APPROVED\",\n  \"approvedAmount\": 1000000,\n  \"conditions\": [\n    \"Fournir garantie supplémentaire\",\n    \"Assurance obligatoire\"\n  ],\n  \"notes\": \"Approuvé sous conditions standards\",\n  \"minutes\": \"Réunion du comité de crédit du 15/01/2025\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/loans/{{loanId}}/approval",
+              "host": ["{{baseUrl}}"],
+              "path": ["loans", "{{loanId}}", "approval"]
+            }
+          }
+        },
+        {
+          "name": "Create Disbursement",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 1000000,\n  \"method\": \"BANK_TRANSFER\",\n  \"accountNumber\": \"1234567890\",\n  \"accountName\": \"Jean Dupont\",\n  \"bankName\": \"Ecobank\",\n  \"referenceNumber\": \"REF-2025-0001\",\n  \"notes\": \"Décaissement approuvé\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/loans/{{loanId}}/disbursement",
+              "host": ["{{baseUrl}}"],
+              "path": ["loans", "{{loanId}}", "disbursement"]
+            }
+          }
+        },
+        {
+          "name": "Verify Disbursement",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"verified\": true,\n  \"notes\": \"Documents vérifiés et conformes\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/loans/{{loanId}}/disbursement/verify",
+              "host": ["{{baseUrl}}"],
+              "path": ["loans", "{{loanId}}", "disbursement", "verify"]
+            }
+          }
+        },
+        {
+          "name": "Complete Disbursement",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"confirm\": true,\n  \"referenceNumber\": \"REF-2025-0001-FINAL\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/loans/{{loanId}}/disbursement/complete",
+              "host": ["{{baseUrl}}"],
+              "path": ["loans", "{{loanId}}", "disbursement", "complete"]
+            }
+          }
+        },
+        {
+          "name": "Close Loan",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"finalRating\": \"EXCELLENT\",\n  \"closureNotes\": \"Prêt remboursé intégralement sans retard\",\n  \"closureChecklist\": [\n    \"Tous les paiements effectués\",\n    \"Documents restitués\",\n    \"Aucun impayé\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/loans/{{loanId}}/close",
+              "host": ["{{baseUrl}}"],
+              "path": ["loans", "{{loanId}}", "close"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Workflow Complete - End to End",
+      "item": [
+        {
+          "name": "Step 1 - Login as Loan Officer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "pm.collectionVariables.set('accessToken', response.accessToken);",
+                  "pm.environment.set('accessToken', response.accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"officer1@mflms.com\",\n  \"password\": \"Password123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Step 2 - Create Customer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "pm.collectionVariables.set('customerId', response.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"INDIVIDUAL\",\n  \"firstName\": \"Marie\",\n  \"lastName\": \"Kamga\",\n  \"dateOfBirth\": \"1990-03-20\",\n  \"gender\": \"FEMALE\",\n  \"nationalId\": \"CM987654321\",\n  \"phone\": \"+237699999999\",\n  \"email\": \"marie.kamga@email.com\",\n  \"address\": \"456 Avenue du Président\",\n  \"city\": \"Douala\",\n  \"district\": \"Akwa\",\n  \"occupation\": \"Restauratrice\",\n  \"monthlyIncome\": 750000,\n  \"branchId\": \"<branch_id_from_seed>\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/customers",
+              "host": ["{{baseUrl}}"],
+              "path": ["customers"]
+            }
+          }
+        },
+        {
+          "name": "Step 3 - Complete KYC",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"hasNationalId\": true,\n  \"hasProofOfAddress\": true,\n  \"hasPhotoProof\": true,\n  \"hasIncomeProof\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/customers/{{customerId}}/kyc",
+              "host": ["{{baseUrl}}"],
+              "path": ["customers", "{{customerId}}", "kyc"]
+            }
+          }
+        },
+        {
+          "name": "Step 4 - Convert to Active Customer",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"confirm\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/customers/{{customerId}}/convert-to-customer",
+              "host": ["{{baseUrl}}"],
+              "path": ["customers", "{{customerId}}", "convert-to-customer"]
+            }
+          }
+        },
+        {
+          "name": "Step 5 - Create Loan",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "pm.collectionVariables.set('loanId', response.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{customerId}}\",\n  \"productName\": \"Prêt Restaurant\",\n  \"purpose\": \"SERVICES\",\n  \"requestedAmount\": 2000000,\n  \"interestRate\": 12,\n  \"interestRateType\": \"REDUCING_BALANCE\",\n  \"tenure\": 24,\n  \"repaymentFrequency\": \"MONTHLY\",\n  \"loanOfficerId\": \"<loan_officer_id>\",\n  \"branchId\": \"<branch_id>\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/loans",
+              "host": ["{{baseUrl}}"],
+              "path": ["loans"]
+            }
+          }
+        },
+        {
+          "name": "Step 6 - Submit Application",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"confirm\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/loans/{{loanId}}/submit",
+              "host": ["{{baseUrl}}"],
+              "path": ["loans", "{{loanId}}", "submit"]
+            }
+          }
+        },
+        {
+          "name": "Step 7 - Create Appraisal",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"siteVisitDate\": \"2025-01-20T14:00:00Z\",\n  \"siteVisitNotes\": \"Restaurant bien situé avec bonne clientèle\",\n  \"monthlyIncome\": 1200000,\n  \"monthlyExpenses\": 600000,\n  \"netCashFlow\": 600000,\n  \"debtServiceRatio\": 0.20,\n  \"creditScore\": 780,\n  \"scoringNotes\": \"Excellent profil\",\n  \"recommendedAmount\": 2000000,\n  \"recommendedTenure\": 24,\n  \"appraisalNotes\": \"Client très fiable, excellente capacité de remboursement\",\n  \"recommendation\": \"APPROVE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/loans/{{loanId}}/appraisal",
+              "host": ["{{baseUrl}}"],
+              "path": ["loans", "{{loanId}}", "appraisal"]
+            }
+          }
+        },
+        {
+          "name": "Step 8 - Complete Appraisal",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/loans/{{loanId}}/appraisal/complete",
+              "host": ["{{baseUrl}}"],
+              "path": ["loans", "{{loanId}}", "appraisal", "complete"]
+            }
+          }
+        },
+        {
+          "name": "Step 9 - Login as Branch Manager",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "pm.collectionVariables.set('accessToken', response.accessToken);",
+                  "pm.environment.set('accessToken', response.accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"manager1@mflms.com\",\n  \"password\": \"Password123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Step 10 - Approve Loan",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"level\": \"BRANCH_MANAGER\",\n  \"decision\": \"APPROVED\",\n  \"approvedAmount\": 2000000,\n  \"conditions\": [\"Assurance prêt obligatoire\"],\n  \"notes\": \"Dossier complet et conforme\",\n  \"minutes\": \"Décision du comité de crédit\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/loans/{{loanId}}/approval",
+              "host": ["{{baseUrl}}"],
+              "path": ["loans", "{{loanId}}", "approval"]
+            }
+          }
+        },
+        {
+          "name": "Step 11 - Create Disbursement",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 2000000,\n  \"method\": \"MOBILE_MONEY\",\n  \"accountNumber\": \"+237699999999\",\n  \"accountName\": \"Marie Kamga\",\n  \"referenceNumber\": \"MoMo-2025-0001\",\n  \"notes\": \"Décaissement via Mobile Money\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/loans/{{loanId}}/disbursement",
+              "host": ["{{baseUrl}}"],
+              "path": ["loans", "{{loanId}}", "disbursement"]
+            }
+          }
+        },
+        {
+          "name": "Step 12 - Verify Disbursement",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"verified\": true,\n  \"notes\": \"Transaction vérifiée et validée\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/loans/{{loanId}}/disbursement/verify",
+              "host": ["{{baseUrl}}"],
+              "path": ["loans", "{{loanId}}", "disbursement", "verify"]
+            }
+          }
+        },
+        {
+          "name": "Step 13 - Complete Disbursement",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"confirm\": true,\n  \"referenceNumber\": \"MoMo-2025-0001-COMPLETED\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/loans/{{loanId}}/disbursement/complete",
+              "host": ["{{baseUrl}}"],
+              "path": ["loans", "{{loanId}}", "disbursement", "complete"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

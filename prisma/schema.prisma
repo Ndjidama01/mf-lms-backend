@@ -1,0 +1,831 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// IDENTITY & ACCESS MANAGEMENT
+// ============================================
+
+enum UserRole {
+  ADMIN
+  CEO
+  BOARD
+  BRANCH_MANAGER
+  LOAN_OFFICER
+  HR
+  COMPLIANCE
+  AUDITOR
+  FIELD_OFFICER
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  LOCKED
+}
+
+model User {
+  id            String      @id @default(uuid())
+  email         String      @unique
+  username      String      @unique
+  password      String
+  firstName     String
+  lastName      String
+  phone         String?
+  role          UserRole
+  status        UserStatus  @default(ACTIVE)
+  branchId      String?
+  branch        Branch?     @relation(fields: [branchId], references: [id])
+  
+  // Metadata
+  lastLogin     DateTime?
+  loginAttempts Int         @default(0)
+  lockedUntil   DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  createdBy     String?
+  
+  // Relations
+  createdCustomers   Customer[]       @relation("CustomerCreatedBy")
+  assignedLoans      Loan[]           @relation("LoanOfficerAssigned")
+  createdLoans       Loan[]           @relation("LoanCreatedBy")
+  tasks              Task[]           @relation("TaskAssignedTo")
+  auditLogs          AuditLog[]
+  kpiResults         KPIResult[]
+  performanceSnapshots PerformanceSnapshot[]
+  alerts             Alert[]          @relation("AlertAssignedTo")
+  
+  @@map("users")
+}
+
+model Branch {
+  id          String    @id @default(uuid())
+  code        String    @unique
+  name        String
+  address     String?
+  phone       String?
+  email       String?
+  region      String?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  // Relations
+  users       User[]
+  customers   Customer[]
+  loans       Loan[]
+  tasks       Task[]
+  alerts      Alert[]
+  
+  @@map("branches")
+}
+
+// ============================================
+// CUSTOMER & KYC MANAGEMENT
+// ============================================
+
+enum CustomerType {
+  INDIVIDUAL
+  GROUP
+  BUSINESS
+}
+
+enum CustomerStatus {
+  PROSPECT
+  ACTIVE
+  INACTIVE
+  BLACKLISTED
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  VERY_HIGH
+}
+
+enum KYCStatus {
+  PENDING
+  INCOMPLETE
+  COMPLETE
+  EXPIRED
+}
+
+model Customer {
+  id              String          @id @default(uuid())
+  customerId      String          @unique // Business ID
+  type            CustomerType
+  status          CustomerStatus  @default(PROSPECT)
+  
+  // Personal Information
+  firstName       String
+  lastName        String
+  middleName      String?
+  dateOfBirth     DateTime?
+  gender          String?
+  nationalId      String?
+  phone           String
+  email           String?
+  address         String?
+  city            String?
+  district        String?
+  
+  // Economic Profile
+  occupation      String?
+  monthlyIncome   Decimal?        @db.Decimal(15, 2)
+  businessName    String?
+  businessType    String?
+  
+  // Branch Assignment
+  branchId        String
+  branch          Branch          @relation(fields: [branchId], references: [id])
+  
+  // NIU Field (Custom data)
+  niuData         Json?
+  
+  // Metadata
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  createdBy       String
+  createdByUser   User            @relation("CustomerCreatedBy", fields: [createdBy], references: [id])
+  
+  // Relations
+  kycProfile      KYCProfile?
+  riskProfile     RiskProfile?
+  loans           Loan[]
+  documents       Document[]
+  
+  @@map("customers")
+}
+
+model KYCProfile {
+  id                String      @id @default(uuid())
+  customerId        String      @unique
+  customer          Customer    @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  
+  status            KYCStatus   @default(PENDING)
+  
+  // Required Documents Checklist
+  hasNationalId     Boolean     @default(false)
+  hasProofOfAddress Boolean     @default(false)
+  hasPhotoProof     Boolean     @default(false)
+  hasIncomeProof    Boolean     @default(false)
+  hasBusinessDocs   Boolean     @default(false)
+  
+  // Verification
+  verifiedAt        DateTime?
+  verifiedBy        String?
+  expiryDate        DateTime?
+  
+  // Metadata
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  
+  @@map("kyc_profiles")
+}
+
+model RiskProfile {
+  id                    String      @id @default(uuid())
+  customerId            String      @unique
+  customer              Customer    @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  
+  riskLevel             RiskLevel   @default(MEDIUM)
+  creditScore           Int?
+  
+  // Risk Factors
+  delinquencyHistory    Boolean     @default(false)
+  multipleBorrowing     Boolean     @default(false)
+  politicalExposure     Boolean     @default(false)
+  highRiskOccupation    Boolean     @default(false)
+  
+  // Assessment
+  assessmentNotes       String?
+  assessedAt            DateTime?
+  assessedBy            String?
+  nextReviewDate        DateTime?
+  
+  // Metadata
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+  
+  @@map("risk_profiles")
+}
+
+// ============================================
+// DOCUMENT MANAGEMENT
+// ============================================
+
+enum DocumentType {
+  NATIONAL_ID
+  PROOF_OF_ADDRESS
+  PHOTO
+  INCOME_PROOF
+  BUSINESS_LICENSE
+  BANK_STATEMENT
+  APPRAISAL_REPORT
+  SITE_VISIT_PHOTO
+  APPROVAL_MINUTES
+  DISBURSEMENT_PROOF
+  REPAYMENT_RECEIPT
+  OTHER
+}
+
+enum DocumentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Document {
+  id              String          @id @default(uuid())
+  fileName        String
+  fileType        String
+  fileSize        Int
+  filePath        String
+  documentType    DocumentType
+  status          DocumentStatus  @default(PENDING)
+  
+  // Entity Relations
+  customerId      String?
+  customer        Customer?       @relation(fields: [customerId], references: [id])
+  loanId          String?
+  loan            Loan?           @relation(fields: [loanId], references: [id])
+  
+  // Metadata
+  description     String?
+  tags            String[]
+  version         Int             @default(1)
+  isLatestVersion Boolean         @default(true)
+  
+  // OCR & Processing
+  ocrText         String?
+  ocrProcessed    Boolean         @default(false)
+  
+  // Access Control
+  uploadedBy      String
+  uploadedAt      DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  
+  // Relations
+  versions        DocumentVersion[]
+  accessLogs      DocumentAccessLog[]
+  
+  @@map("documents")
+}
+
+model DocumentVersion {
+  id          String    @id @default(uuid())
+  documentId  String
+  document    Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  
+  version     Int
+  fileName    String
+  filePath    String
+  fileSize    Int
+  
+  uploadedBy  String
+  uploadedAt  DateTime  @default(now())
+  notes       String?
+  
+  @@map("document_versions")
+}
+
+model DocumentAccessLog {
+  id          String    @id @default(uuid())
+  documentId  String
+  document    Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  
+  userId      String
+  action      String    // VIEW, DOWNLOAD, PRINT, EDIT, DELETE
+  ipAddress   String?
+  userAgent   String?
+  
+  accessedAt  DateTime  @default(now())
+  
+  @@map("document_access_logs")
+}
+
+// ============================================
+// LOAN LIFECYCLE MANAGEMENT
+// ============================================
+
+enum LoanStatus {
+  DRAFT
+  APPLICATION_SUBMITTED
+  UNDER_APPRAISAL
+  PENDING_APPROVAL
+  APPROVED
+  APPROVED_WITH_CONDITIONS
+  REJECTED
+  DISBURSED
+  ACTIVE
+  OVERDUE
+  RESTRUCTURED
+  CLOSED
+  WRITTEN_OFF
+}
+
+enum LoanPurpose {
+  AGRICULTURE
+  TRADE
+  SERVICES
+  MANUFACTURING
+  EDUCATION
+  HOUSING
+  EMERGENCY
+  OTHER
+}
+
+enum InterestRateType {
+  FLAT
+  REDUCING_BALANCE
+  FIXED
+  VARIABLE
+}
+
+enum RepaymentFrequency {
+  DAILY
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+  QUARTERLY
+}
+
+model Loan {
+  id                    String              @id @default(uuid())
+  loanId                String              @unique // Business ID
+  
+  // Customer
+  customerId            String
+  customer              Customer            @relation(fields: [customerId], references: [id])
+  
+  // Loan Details
+  productName           String
+  purpose               LoanPurpose
+  requestedAmount       Decimal             @db.Decimal(15, 2)
+  approvedAmount        Decimal?            @db.Decimal(15, 2)
+  interestRate          Decimal             @db.Decimal(5, 2)
+  interestRateType      InterestRateType    @default(REDUCING_BALANCE)
+  tenure                Int                 // in months
+  repaymentFrequency    RepaymentFrequency  @default(MONTHLY)
+  
+  // Status & Workflow
+  status                LoanStatus          @default(DRAFT)
+  
+  // Assignment
+  loanOfficerId         String
+  loanOfficer           User                @relation("LoanOfficerAssigned", fields: [loanOfficerId], references: [id])
+  branchId              String
+  branch                Branch              @relation(fields: [branchId], references: [id])
+  
+  // Dates
+  applicationDate       DateTime            @default(now())
+  approvalDate          DateTime?
+  disbursementDate      DateTime?
+  maturityDate          DateTime?
+  closedDate            DateTime?
+  
+  // Metadata
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  createdBy             String
+  createdByUser         User                @relation("LoanCreatedBy", fields: [createdBy], references: [id])
+  
+  // Relations
+  appraisal             Appraisal?
+  approvalDecisions     ApprovalDecision[]
+  disbursement          Disbursement?
+  repaymentSchedule     RepaymentSchedule[]
+  documents             Document[]
+  tasks                 Task[]
+  alerts                Alert[]
+  
+  @@map("loans")
+}
+
+// ============================================
+// APPRAISAL
+// ============================================
+
+enum AppraisalStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  APPROVED
+  REJECTED
+}
+
+model Appraisal {
+  id                      String          @id @default(uuid())
+  loanId                  String          @unique
+  loan                    Loan            @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  
+  status                  AppraisalStatus @default(PENDING)
+  
+  // Site Visit
+  siteVisitDate           DateTime?
+  siteVisitNotes          String?
+  siteVisitPhotos         String[]
+  
+  // Cash Flow Analysis
+  monthlyIncome           Decimal?        @db.Decimal(15, 2)
+  monthlyExpenses         Decimal?        @db.Decimal(15, 2)
+  netCashFlow             Decimal?        @db.Decimal(15, 2)
+  debtServiceRatio        Decimal?        @db.Decimal(5, 2)
+  
+  // Credit Scoring
+  creditScore             Int?
+  scoringNotes            String?
+  
+  // Recommendation
+  recommendedAmount       Decimal?        @db.Decimal(15, 2)
+  recommendedTenure       Int?
+  appraisalNotes          String?
+  recommendation          String?         // APPROVE, REJECT, CONDITIONAL
+  
+  // Metadata
+  appraisedBy             String?
+  appraisedAt             DateTime?
+  createdAt               DateTime        @default(now())
+  updatedAt               DateTime        @updatedAt
+  
+  @@map("appraisals")
+}
+
+// ============================================
+// APPROVAL WORKFLOW
+// ============================================
+
+enum ApprovalLevel {
+  BRANCH_MANAGER
+  REGIONAL_MANAGER
+  CREDIT_COMMITTEE
+  BOARD
+}
+
+enum ApprovalDecisionType {
+  APPROVED
+  APPROVED_WITH_CONDITIONS
+  REJECTED
+  DEFERRED
+}
+
+model ApprovalDecision {
+  id              String                @id @default(uuid())
+  loanId          String
+  loan            Loan                  @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  
+  level           ApprovalLevel
+  decision        ApprovalDecisionType
+  approvedAmount  Decimal?              @db.Decimal(15, 2)
+  
+  conditions      String[]
+  notes           String?
+  minutes         String?
+  
+  approvedBy      String
+  approvedAt      DateTime              @default(now())
+  
+  @@map("approval_decisions")
+}
+
+// ============================================
+// DISBURSEMENT
+// ============================================
+
+enum DisbursementMethod {
+  CASH
+  BANK_TRANSFER
+  MOBILE_MONEY
+  CHEQUE
+}
+
+enum DisbursementStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REVERSED
+}
+
+model Disbursement {
+  id                  String              @id @default(uuid())
+  loanId              String              @unique
+  loan                Loan                @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  
+  amount              Decimal             @db.Decimal(15, 2)
+  method              DisbursementMethod
+  status              DisbursementStatus  @default(PENDING)
+  
+  // Payment Details
+  accountNumber       String?
+  accountName         String?
+  bankName            String?
+  referenceNumber     String?
+  
+  // Verification
+  verifiedBy          String?
+  verifiedAt          DateTime?
+  disbursedBy         String?
+  disbursedAt         DateTime?
+  
+  // Metadata
+  notes               String?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  
+  @@map("disbursements")
+}
+
+// ============================================
+// REPAYMENT SCHEDULE
+// ============================================
+
+enum RepaymentStatus {
+  PENDING
+  PAID
+  PARTIALLY_PAID
+  OVERDUE
+  WRITTEN_OFF
+}
+
+model RepaymentSchedule {
+  id                  String          @id @default(uuid())
+  loanId              String
+  loan                Loan            @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  
+  installmentNumber   Int
+  dueDate             DateTime
+  
+  principalAmount     Decimal         @db.Decimal(15, 2)
+  interestAmount      Decimal         @db.Decimal(15, 2)
+  totalAmount         Decimal         @db.Decimal(15, 2)
+  
+  paidPrincipal       Decimal         @default(0) @db.Decimal(15, 2)
+  paidInterest        Decimal         @default(0) @db.Decimal(15, 2)
+  paidTotal           Decimal         @default(0) @db.Decimal(15, 2)
+  
+  outstandingPrincipal Decimal        @db.Decimal(15, 2)
+  outstandingInterest  Decimal        @db.Decimal(15, 2)
+  outstandingTotal     Decimal        @db.Decimal(15, 2)
+  
+  status              RepaymentStatus @default(PENDING)
+  
+  paymentDate         DateTime?
+  daysOverdue         Int             @default(0)
+  penaltyAmount       Decimal         @default(0) @db.Decimal(15, 2)
+  
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+  
+  @@map("repayment_schedules")
+}
+
+// ============================================
+// TASK & SLA MANAGEMENT
+// ============================================
+
+enum TaskType {
+  KYC_VERIFICATION
+  SITE_VISIT
+  APPRAISAL
+  DOCUMENT_UPLOAD
+  APPROVAL_REQUEST
+  DISBURSEMENT_VERIFICATION
+  MONITORING_VISIT
+  FOLLOW_UP_CALL
+  COLLECTION
+  EWS_ACTION
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  OVERDUE
+  ESCALATED
+  CANCELLED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+model Task {
+  id              String        @id @default(uuid())
+  taskType        TaskType
+  title           String
+  description     String?
+  priority        TaskPriority  @default(MEDIUM)
+  status          TaskStatus    @default(PENDING)
+  
+  // Assignment
+  assignedToId    String
+  assignedTo      User          @relation("TaskAssignedTo", fields: [assignedToId], references: [id])
+  branchId        String?
+  branch          Branch?       @relation(fields: [branchId], references: [id])
+  
+  // Entity Relations
+  loanId          String?
+  loan            Loan?         @relation(fields: [loanId], references: [id])
+  customerId      String?
+  
+  // SLA
+  dueDate         DateTime
+  slaMinutes      Int           // SLA in minutes
+  completedAt     DateTime?
+  escalatedAt     DateTime?
+  escalatedTo     String?
+  
+  // Evidence
+  notes           String?
+  evidenceUrls    String[]
+  
+  // Metadata
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  createdBy       String
+  
+  @@map("tasks")
+}
+
+// ============================================
+// EARLY WARNING SYSTEM (EWS)
+// ============================================
+
+enum AlertSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+enum AlertCategory {
+  CLIENT_RISK
+  OFFICER_PERFORMANCE
+  BRANCH_RISK
+  PORTFOLIO_RISK
+  COMPLIANCE
+}
+
+enum AlertStatus {
+  ACTIVE
+  ACKNOWLEDGED
+  RESOLVED
+  DISMISSED
+}
+
+model Alert {
+  id              String          @id @default(uuid())
+  category        AlertCategory
+  severity        AlertSeverity
+  status          AlertStatus     @default(ACTIVE)
+  
+  title           String
+  description     String
+  triggerReason   String
+  
+  // Entity Relations
+  customerId      String?
+  loanId          String?
+  loan            Loan?           @relation(fields: [loanId], references: [id])
+  userId          String?
+  user            User?           @relation("AlertAssignedTo", fields: [userId], references: [id])
+  branchId        String?
+  branch          Branch?         @relation(fields: [branchId], references: [id])
+  
+  // Actions
+  recommendedAction String?
+  actionTaken       String?
+  
+  // Timestamps
+  triggeredAt     DateTime        @default(now())
+  acknowledgedAt  DateTime?
+  resolvedAt      DateTime?
+  
+  // Metadata
+  metadata        Json?
+  
+  @@map("alerts")
+}
+
+// ============================================
+// KPI & PERFORMANCE MANAGEMENT
+// ============================================
+
+enum KPICategory {
+  PORTFOLIO_QUALITY
+  PRODUCTIVITY
+  COMPLIANCE
+  CLIENT_IMPACT
+}
+
+model KPIResult {
+  id              String        @id @default(uuid())
+  userId          String
+  user            User          @relation(fields: [userId], references: [id])
+  
+  period          DateTime      // Month/Quarter
+  category        KPICategory
+  
+  // Scores
+  portfolioQualityScore   Decimal?  @db.Decimal(5, 2)
+  productivityScore       Decimal?  @db.Decimal(5, 2)
+  complianceScore         Decimal?  @db.Decimal(5, 2)
+  clientImpactScore       Decimal?  @db.Decimal(5, 2)
+  
+  totalScore              Decimal   @db.Decimal(5, 2)
+  weightedScore           Decimal   @db.Decimal(5, 2)
+  
+  // Details
+  metrics         Json          // Detailed metrics
+  notes           String?
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  @@map("kpi_results")
+}
+
+model PerformanceSnapshot {
+  id              String    @id @default(uuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id])
+  
+  snapshotDate    DateTime
+  period          String    // e.g., "2025-01", "Q1-2025"
+  
+  // Portfolio Metrics
+  activeLoans     Int
+  disbursedAmount Decimal   @db.Decimal(15, 2)
+  par30           Decimal   @db.Decimal(5, 2)
+  par90           Decimal   @db.Decimal(5, 2)
+  
+  // Productivity
+  newClients      Int
+  visitsCompleted Int
+  tasksCompleted  Int
+  
+  // Compliance
+  kycCompliance   Decimal   @db.Decimal(5, 2)
+  slaCompliance   Decimal   @db.Decimal(5, 2)
+  
+  createdAt       DateTime  @default(now())
+  
+  @@map("performance_snapshots")
+}
+
+// ============================================
+// AUDIT & COMPLIANCE
+// ============================================
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  VIEW
+  APPROVE
+  REJECT
+  DISBURSE
+  LOGIN
+  LOGOUT
+}
+
+model AuditLog {
+  id            String      @id @default(uuid())
+  
+  // User & Action
+  userId        String
+  user          User        @relation(fields: [userId], references: [id])
+  action        AuditAction
+  
+  // Entity
+  entityType    String      // Customer, Loan, Document, etc.
+  entityId      String
+  
+  // Details
+  description   String
+  oldValues     Json?
+  newValues     Json?
+  
+  // Context
+  ipAddress     String?
+  userAgent     String?
+  
+  timestamp     DateTime    @default(now())
+  
+  @@map("audit_logs")
+  @@index([userId, timestamp])
+  @@index([entityType, entityId])
+}

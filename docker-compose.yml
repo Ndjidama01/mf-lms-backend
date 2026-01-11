@@ -1,0 +1,147 @@
+version: '3.8'
+
+services:
+  # ========================================
+  # Base de Données PostgreSQL
+  # ========================================
+  postgres:
+    image: postgres:14-alpine
+    container_name: mf-lms-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: mf_lms
+      POSTGRES_USER: mf_user
+      POSTGRES_PASSWORD: mf_password_2025
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - mf-lms-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mf_user -d mf_lms"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ========================================
+  # Backend NestJS API
+  # ========================================
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mf-lms-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://mf_user:mf_password_2025@postgres:5432/mf_lms?schema=public
+      JWT_SECRET: your-super-secret-jwt-key-change-in-production
+      JWT_EXPIRES_IN: 1d
+      JWT_REFRESH_SECRET: your-super-secret-refresh-key
+      JWT_REFRESH_EXPIRES_IN: 7d
+      BCRYPT_ROUNDS: 10
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+    networks:
+      - mf-lms-network
+    command: sh -c "npx prisma migrate deploy && npm run start:prod"
+
+  # ========================================
+  # Redis (Cache - Optionnel)
+  # ========================================
+  redis:
+    image: redis:7-alpine
+    container_name: mf-lms-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - mf-lms-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ========================================
+  # Prisma Studio (Optionnel - Dev)
+  # ========================================
+  prisma-studio:
+    image: node:18-alpine
+    container_name: mf-lms-prisma-studio
+    working_dir: /app
+    depends_on:
+      - postgres
+    environment:
+      DATABASE_URL: postgresql://mf_user:mf_password_2025@postgres:5432/mf_lms?schema=public
+    ports:
+      - "5555:5555"
+    volumes:
+      - .:/app
+    networks:
+      - mf-lms-network
+    command: sh -c "npm install && npx prisma studio --port 5555 --hostname 0.0.0.0"
+    profiles:
+      - dev
+
+  # ========================================
+  # MailHog (Test Emails - Dev)
+  # ========================================
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: mf-lms-mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025"  # SMTP
+      - "8025:8025"  # Web UI
+    networks:
+      - mf-lms-network
+    profiles:
+      - dev
+
+  # ========================================
+  # Nginx (Reverse Proxy - Production)
+  # ========================================
+  nginx:
+    image: nginx:alpine
+    container_name: mf-lms-nginx
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    networks:
+      - mf-lms-network
+    profiles:
+      - production
+
+# ========================================
+# Volumes (Persistance des Données)
+# ========================================
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+# ========================================
+# Network (Communication entre Services)
+# ========================================
+networks:
+  mf-lms-network:
+    driver: bridge

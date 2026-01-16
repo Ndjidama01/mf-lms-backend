@@ -6,6 +6,7 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { OtpService } from '../otp/otp.service';
 import {
   CreateCustomerDto,
   UpdateCustomerDto,
@@ -14,12 +15,16 @@ import {
   UpdateRiskProfileDto,
 } from './dto/customer.dto';
 import { CustomerStatus, KYCStatus, RiskLevel } from '@prisma/client';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class CustomersService {
   private readonly logger = new Logger(CustomersService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private otpService: OtpService,
+  ) { }
 
   async create(createCustomerDto: CreateCustomerDto, createdBy: string) {
     // Verify branch exists
@@ -74,7 +79,75 @@ export class CustomersService {
       },
     });
 
-    this.logger.log(`Customer created: ${customer.customerId} by ${createdBy}`);
+    // Create mobile account (PENDING_ACTIVATION)
+    const activationToken = crypto.randomBytes(32).toString('hex');
+    const activationExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 jours
+
+    const mobileAccount = await this.prisma.mobileAccount.create({
+      data: {
+        customerId: customer.id,
+        phoneNumber: customer.phone,
+        email: customer.email,
+        status: 'PENDING_ACTIVATION',
+        activationToken,
+        activationTokenExpiry: activationExpiry,
+        phoneVerified: false,
+        emailVerified: false,
+        createdBy: createdBy,
+      },
+    });
+
+    // Générer le lien d'activation
+    const activationLink = `mflms://activate?token=${activationToken}`;
+    // Ou lien web: https://app.mflms.com/activate?token=${activationToken}
+
+    // Créer l'invitation
+    await this.prisma.clientInvitation.create({
+      data: {
+        customerId: customer.id,
+        phoneNumber: customer.phone,
+        email: customer.email,
+        invitationCode: activationToken,
+        deepLink: activationLink,
+        expiresAt: activationExpiry,
+        sentBy: createdBy,
+        status: 'PENDING',
+      },
+    });
+
+    // Envoyer SMS d'invitation
+    try {
+      const smsMessage = `Bienvenue chez MF-LMS, ${customer.firstName}!
+
+Votre compte est prêt. Téléchargez l'application et activez votre compte :
+
+📱 Android: https://play.google.com/store/apps/details?id=com.mflms
+🍎 iOS: https://apps.apple.com/app/mflms
+
+Ou cliquez ici : ${activationLink}
+
+Valide 7 jours.
+MF-LMS`;
+
+      await this.otpService['sendSMS'](customer.phone, smsMessage);
+
+      // Marquer l'invitation comme envoyée
+      await this.prisma.clientInvitation.updateMany({
+        where: { customerId: customer.id },
+        data: {
+          smsSent: true,
+          smsSentAt: new Date(),
+          status: 'SENT',
+        },
+      });
+
+      this.logger.log(`Activation SMS sent to ${customer.phone} for customer ${customer.customerId}`);
+    } catch (error) {
+      this.logger.error(`Failed to send activation SMS to ${customer.phone}: ${error.message}`);
+      // Ne pas bloquer la création du customer si l'envoi SMS échoue
+    }
+
+    this.logger.log(`Customer created: ${customer.customerId} with mobile account by ${createdBy}`);
 
     return this.findOne(customer.id);
   }

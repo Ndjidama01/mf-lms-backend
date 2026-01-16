@@ -99,9 +99,9 @@ async function bootstrap() {
     },
   });
 
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0');
 
-  logger.log(`🚀 Application is running on: http://localhost:${port}/${apiPrefix}`);
+  logger.log(`🚀 Application is running on: http://192.168.1.252:${port}/${apiPrefix}`);
   logger.log(`📚 Swagger documentation: http://localhost:${port}/api/docs`);
   logger.log(`🔐 Environment: ${configService.get<string>('NODE_ENV') || 'development'}`);
 }

@@ -63,6 +63,8 @@ model User {
   kpiResults         KPIResult[]
   performanceSnapshots PerformanceSnapshot[]
   alerts             Alert[]          @relation("AlertAssignedTo")
+  documentVersions   DocumentVersion[]
+  documentAccessLogs DocumentAccessLog[]
   
   @@map("users")
 }
@@ -87,6 +89,132 @@ model Branch {
   alerts      Alert[]
   
   @@map("branches")
+}
+
+
+// ============================================
+// ACCOUNT AND PRODUCT MANAGEMENT
+// ============================================
+
+enum ProductType {
+  SAVINGS
+  CURRENT
+  LOAN
+}
+
+enum ProductStatus {
+  ACTIVE
+  INACTIVE
+  DISCONTINUED
+}
+
+enum AccountStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  CLOSED
+}
+
+enum AccountAction {
+  CREATED
+  ACTIVATED
+  SUSPENDED
+  REACTIVATED
+  CLOSED
+  BALANCE_UPDATED
+  STATUS_CHANGED
+  APPROVED
+  REJECTED
+}
+
+// Table des produits financiers
+model Product {
+  id              String        @id @default(uuid())
+  code            String        @unique
+  name            String
+  type            ProductType
+  description     String?       @db.Text
+  minimumBalance  Decimal       @default(0) @db.Decimal(15, 2)
+  maximumBalance  Decimal?      @db.Decimal(15, 2)
+  interestRate    Decimal       @default(0) @db.Decimal(5, 2)
+  currency        String        @default("XAF")
+  requiresApproval Boolean      @default(false)
+  autoActivate    Boolean       @default(true)
+  allowMultiple   Boolean       @default(false)
+  status          ProductStatus @default(ACTIVE)
+  features        Json?
+  
+  accounts        Account[]
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@map("products")
+}
+
+// Table des comptes bancaires
+model Account {
+  id               String        @id @default(uuid())
+  accountNumber    String        @unique
+  customerId       String
+  productId        String
+  balance          Decimal       @default(0) @db.Decimal(15, 2)
+  availableBalance Decimal       @default(0) @db.Decimal(15, 2)
+  currency         String        @default("XAF")
+  status           AccountStatus @default(PENDING)
+  branchCode       String?
+  openedBy         String?
+  approvedBy       String?
+  approvedAt       DateTime?
+  activatedAt      DateTime?
+  closedAt         DateTime?
+  closureReason    String?       @db.Text
+  metadata         Json?
+  
+  customer         Customer      @relation(fields: [customerId], references: [customerId])
+  product          Product       @relation(fields: [productId], references: [id])
+  history          AccountHistory[]
+  
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  @@index([customerId])
+  @@index([accountNumber])
+  @@map("accounts")
+}
+
+// Table des séquences pour génération numéros de compte
+model AccountSequence {
+  id              String   @id @default(uuid())
+  branchCode      String
+  year            Int
+  lastSequence    Int      @default(0)
+  currentSequence Int      @default(1)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([branchCode, year])
+  @@map("account_sequences")
+}
+
+// Table d'historique et audit trail
+model AccountHistory {
+  id          String        @id @default(uuid())
+  accountId   String
+  action      AccountAction
+  description String?       @db.Text
+  performedBy String?
+  oldValue    Json?
+  newValue    Json?
+  ipAddress   String?
+  
+  account     Account       @relation(fields: [accountId], references: [id])
+  
+  createdAt   DateTime      @default(now())
+
+  @@index([accountId])
+  @@map("account_history")
 }
 
 // ============================================
@@ -118,6 +246,8 @@ enum KYCStatus {
   INCOMPLETE
   COMPLETE
   EXPIRED
+  REJECTED
+  APPROVED
 }
 
 model Customer {
@@ -160,9 +290,14 @@ model Customer {
   
   // Relations
   kycProfile      KYCProfile?
+  accounts    Account[]
   riskProfile     RiskProfile?
   loans           Loan[]
   documents       Document[]
+  tasks           Task[]
+  alerts          Alert[]
+  mobileAccount   MobileAccount?
+  invitation      ClientInvitation?
   
   @@map("customers")
 }
@@ -270,6 +405,11 @@ model Document {
   ocrText         String?
   ocrProcessed    Boolean         @default(false)
   
+  // Legal & Retention
+  legalHold       Boolean         @default(false)
+  legalHoldReason String?
+  retentionDate   DateTime?
+  
   // Access Control
   uploadedBy      String
   uploadedAt      DateTime        @default(now())
@@ -292,9 +432,10 @@ model DocumentVersion {
   filePath    String
   fileSize    Int
   
-  uploadedBy  String
-  uploadedAt  DateTime  @default(now())
-  notes       String?
+  uploadedBy      String
+  uploadedByUser  User      @relation(fields: [uploadedBy], references: [id])
+  uploadedAt      DateTime  @default(now())
+  notes           String?
   
   @@map("document_versions")
 }
@@ -305,6 +446,7 @@ model DocumentAccessLog {
   document    Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
   
   userId      String
+  user        User      @relation(fields: [userId], references: [id])
   action      String    // VIEW, DOWNLOAD, PRINT, EDIT, DELETE
   ipAddress   String?
   userAgent   String?
@@ -595,6 +737,14 @@ model RepaymentSchedule {
 // ============================================
 
 enum TaskType {
+  FOLLOW_UP
+  DOCUMENT_REVIEW
+  FIELD_VISIT
+  CUSTOMER_CONTACT
+  LOAN_REVIEW
+  COMPLIANCE_CHECK
+  ALERT_RESPONSE
+  URGENT_ACTION
   KYC_VERIFICATION
   SITE_VISIT
   APPRAISAL
@@ -602,17 +752,14 @@ enum TaskType {
   APPROVAL_REQUEST
   DISBURSEMENT_VERIFICATION
   MONITORING_VISIT
-  FOLLOW_UP_CALL
   COLLECTION
-  EWS_ACTION
+  OTHER
 }
 
 enum TaskStatus {
   PENDING
   IN_PROGRESS
   COMPLETED
-  OVERDUE
-  ESCALATED
   CANCELLED
 }
 
@@ -620,14 +767,14 @@ enum TaskPriority {
   LOW
   MEDIUM
   HIGH
-  CRITICAL
+  URGENT
 }
 
 model Task {
   id              String        @id @default(uuid())
-  taskType        TaskType
+  type            TaskType
   title           String
-  description     String?
+  description     String
   priority        TaskPriority  @default(MEDIUM)
   status          TaskStatus    @default(PENDING)
   
@@ -638,25 +785,29 @@ model Task {
   branch          Branch?       @relation(fields: [branchId], references: [id])
   
   // Entity Relations
+  customerId      String?
+  customer        Customer?     @relation(fields: [customerId], references: [id])
   loanId          String?
   loan            Loan?         @relation(fields: [loanId], references: [id])
-  customerId      String?
+  
+  // Scheduling
+  dueDate         DateTime
+  startedAt       DateTime?
+  completedAt     DateTime?
   
   // SLA
-  dueDate         DateTime
-  slaMinutes      Int           // SLA in minutes
-  completedAt     DateTime?
-  escalatedAt     DateTime?
-  escalatedTo     String?
+  slaHours        Int?
+  slaDeadline     DateTime?
+  slaBreached     Boolean       @default(false)
   
-  // Evidence
-  notes           String?
-  evidenceUrls    String[]
+  // Completion
+  completionNotes String?
+  checklist       String[]
   
   // Metadata
+  metadata        Json?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
-  createdBy       String
   
   @@map("tasks")
 }
@@ -666,56 +817,54 @@ model Task {
 // ============================================
 
 enum AlertSeverity {
-  INFO
-  WARNING
+  LOW
+  MEDIUM
+  HIGH
   CRITICAL
 }
 
 enum AlertCategory {
-  CLIENT_RISK
-  OFFICER_PERFORMANCE
-  BRANCH_RISK
-  PORTFOLIO_RISK
+  CREDIT_RISK
+  OPERATIONAL
   COMPLIANCE
-}
-
-enum AlertStatus {
-  ACTIVE
-  ACKNOWLEDGED
-  RESOLVED
-  DISMISSED
+  PERFORMANCE
+  SYSTEM
 }
 
 model Alert {
   id              String          @id @default(uuid())
-  category        AlertCategory
   severity        AlertSeverity
-  status          AlertStatus     @default(ACTIVE)
+  category        AlertCategory
+  status          String          @default("ACTIVE")
   
   title           String
-  description     String
-  triggerReason   String
+  message         String
   
   // Entity Relations
   customerId      String?
+  customer        Customer?       @relation(fields: [customerId], references: [id])
   loanId          String?
   loan            Loan?           @relation(fields: [loanId], references: [id])
-  userId          String?
-  user            User?           @relation("AlertAssignedTo", fields: [userId], references: [id])
   branchId        String?
   branch          Branch?         @relation(fields: [branchId], references: [id])
+  assignedToId    String?
+  assignedTo      User?           @relation("AlertAssignedTo", fields: [assignedToId], references: [id])
   
-  // Actions
-  recommendedAction String?
-  actionTaken       String?
+  // Action & Source
+  requiresAction  Boolean         @default(false)
+  source          String?
   
-  // Timestamps
-  triggeredAt     DateTime        @default(now())
+  // Resolution
+  acknowledgedBy  String?
   acknowledgedAt  DateTime?
+  resolvedBy      String?
   resolvedAt      DateTime?
+  resolutionNotes String?
   
   // Metadata
   metadata        Json?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
   
   @@map("alerts")
 }
@@ -828,4 +977,165 @@ model AuditLog {
   @@map("audit_logs")
   @@index([userId, timestamp])
   @@index([entityType, entityId])
+}
+
+// ============================================
+// MOBILE CUSTOMER ACCOUNTS & ONBOARDING
+// ============================================
+
+enum MobileAccountStatus {
+  PENDING_ACTIVATION
+  ACTIVE
+  SUSPENDED
+  LOCKED
+  CLOSED
+}
+
+enum OTPType {
+  ACCOUNT_ACTIVATION
+  PASSWORD_RESET
+  LOGIN_VERIFICATION
+  TRANSACTION_CONFIRM
+}
+
+enum OTPChannel {
+  SMS
+  EMAIL
+  WHATSAPP
+}
+
+model MobileAccount {
+  id                    String                @id @default(uuid())
+  
+  // Relation avec Customer
+  customerId            String                @unique
+  customer              Customer              @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  
+  // Identifiants de connexion
+  phoneNumber           String                @unique
+  phoneVerified         Boolean               @default(false)
+  email                 String?               @unique
+  emailVerified         Boolean               @default(false)
+  
+  // Sécurité
+  passwordHash          String?
+  pinHash               String?
+  
+  // Statut & Activation
+  status                MobileAccountStatus   @default(PENDING_ACTIVATION)
+  activationToken       String?               @unique
+  activationTokenExpiry DateTime?
+  activatedAt           DateTime?
+  
+  // Sécurité connexion
+  failedLoginAttempts   Int                   @default(0)
+  lastFailedLoginAt     DateTime?
+  lockedUntil           DateTime?
+  lastLoginAt           DateTime?
+  lastLoginIp           String?
+  
+  // Tokens de session
+  refreshToken          String?               @unique
+  refreshTokenExpiry    DateTime?
+  
+  // Preferences
+  preferredLanguage     String                @default("fr")
+  notificationsEnabled  Boolean               @default(true)
+  biometricEnabled      Boolean               @default(false)
+  
+  // Métadonnées
+  deviceInfo            Json?
+  appVersion            String?
+  
+  // Timestamps
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  createdBy             String
+  
+  // Relations
+  otpCodes              OTPCode[]
+  loginHistory          LoginHistory[]
+  
+  @@map("mobile_accounts")
+}
+
+model OTPCode {
+  id                String        @id @default(uuid())
+  
+  mobileAccountId   String
+  mobileAccount     MobileAccount @relation(fields: [mobileAccountId], references: [id], onDelete: Cascade)
+  
+  code              String
+  type              OTPType
+  channel           OTPChannel
+  
+  isUsed            Boolean       @default(false)
+  usedAt            DateTime?
+  expiresAt         DateTime
+  
+  attempts          Int           @default(0)
+  maxAttempts       Int           @default(3)
+  
+  ipAddress         String?
+  userAgent         String?
+  purpose           String?
+  
+  createdAt         DateTime      @default(now())
+  
+  @@index([mobileAccountId, type])
+  @@index([expiresAt])
+  @@map("otp_codes")
+}
+
+model LoginHistory {
+  id                String        @id @default(uuid())
+  
+  mobileAccountId   String
+  mobileAccount     MobileAccount @relation(fields: [mobileAccountId], references: [id], onDelete: Cascade)
+  
+  loginMethod       String
+  success           Boolean
+  failureReason     String?
+  
+  ipAddress         String
+  userAgent         String
+  deviceInfo        Json?
+  location          String?
+  
+  attemptedAt       DateTime      @default(now())
+  
+  @@index([mobileAccountId, attemptedAt])
+  @@map("login_history")
+}
+
+model ClientInvitation {
+  id                String        @id @default(uuid())
+  
+  customerId        String        @unique
+  customer          Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  
+  phoneNumber       String
+  email             String?
+  
+  status            String        @default("SENT")
+  
+  smsSent           Boolean       @default(false)
+  smsSentAt         DateTime?
+  emailSent         Boolean       @default(false)
+  emailSentAt       DateTime?
+  
+  invitationCode    String        @unique
+  deepLink          String?
+  openedAt          DateTime?
+  activatedAt       DateTime?
+  
+  expiresAt         DateTime
+  
+  sentBy            String
+  metadata          Json?
+  
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  
+  @@map("client_invitations")
 }

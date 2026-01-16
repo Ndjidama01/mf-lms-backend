@@ -9,6 +9,10 @@ import { LoansModule } from './modules/loans/loans.module';
 import configuration from './config/configuration';
 import { BranchesModule } from './modules/branches/branches.module';
 import { DocumentsModule } from './modules/documents/documents.module';
+import { AlertsModule } from "./modules/alerts/alerts.module";
+import { TasksModule } from './modules/tasks/tasks.module';
+import { MobileAuthModule } from './modules/mobile-auth/mobile-auth.module';
+import { AccountModule } from './account/account.module';
 
 @Module({
   imports: [
@@ -35,6 +39,10 @@ import { DocumentsModule } from './modules/documents/documents.module';
     DocumentsModule,
     CustomersModule,
     LoansModule,
+    AlertsModule,
+    TasksModule,
+    MobileAuthModule,
+    AccountModule,
   ],
 })
 export class AppModule {}

@@ -12,6 +12,7 @@ import {
 import { CustomerType, CustomerStatus, RiskLevel, KYCStatus } from '@prisma/client';
 import { Type } from 'class-transformer';
 
+
 export class CreateCustomerDto {
   @ApiProperty({ enum: CustomerType, example: CustomerType.INDIVIDUAL })
   @IsEnum(CustomerType)

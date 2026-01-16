@@ -236,11 +236,11 @@ export class DocumentsService {
       throw new ForbiddenException('Cannot delete document under legal hold');
     }
 
-    // Soft delete
+    // Soft delete (set status to REJECTED as DELETED does not exist)
     await this.prisma.document.update({
       where: { id },
       data: {
-        status: DocumentStatus.DELETED,
+        status: DocumentStatus.REJECTED,
       },
     });
 
